@@ -31,7 +31,7 @@ namespace WebUI.Controllers
 
         [HttpPost("")]
         [Authorize(Roles = "member")]
-        public async Task<IActionResult> Create(AppointmentCreateDto createAppointmentDto)
+        public async Task<IActionResult> Create([FromBody] AppointmentCreateDto createAppointmentDto)
         {
             AppUser? appUser = await _userManager.Users.SingleOrDefaultAsync(u => u.Email == User.Identity.Name);
             if (appUser == null || !await _userManager.IsInRoleAsync(appUser, "member")) return Unauthorized();

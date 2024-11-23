@@ -40,5 +40,27 @@ namespace WebUI.Hubs
             }
             return base.OnDisconnectedAsync(exception);
         }
+        public async Task SendMessage(string message, string recipientId)
+        {
+            // Get the current user's identity
+            var senderEmail = Context.User?.Identity?.Name;
+            if (senderEmail == null) return;
+
+            // Find the sender in the database
+            var senderUser = await _userManager.FindByNameAsync(senderEmail);
+            if (senderUser == null) return;
+
+            // Find the recipient by their ID
+            var recipientUser = await _userManager.FindByIdAsync(recipientId);
+            if (recipientUser == null || string.IsNullOrEmpty(recipientUser.ClientId))
+            {
+                await Clients.Caller.SendAsync("ReceiveMessage", "Recipient not available.", senderUser.Id);
+                return;
+            }
+
+            // Send the message to the recipient's client
+            await Clients.Client(recipientUser.ClientId).SendAsync("ReceiveMessage", message, senderUser.Id);
+        }
+
     }
 }

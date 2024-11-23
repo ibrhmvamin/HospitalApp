@@ -37,7 +37,7 @@ namespace Business.Concrete
             var jwtToken = new JwtSecurityToken(
                 claims: claims,
                 notBefore: DateTime.UtcNow,
-                expires: DateTime.UtcNow.AddHours(3),
+                expires: DateTime.UtcNow.AddDays(1),
                 signingCredentials: new SigningCredentials(
                     new SymmetricSecurityKey(
                        Encoding.UTF8.GetBytes(_configuration["JWT:SecretKey"])

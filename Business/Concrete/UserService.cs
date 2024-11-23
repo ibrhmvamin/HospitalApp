@@ -33,18 +33,18 @@ namespace Business.Concrete
             return _mapper.Map<IEnumerable<UserReturnDto>>(appUsers);
         }
 
-        public async Task<IEnumerable<UserReturnDto>> GetAllDoctorsAsync()
+        public async Task<IEnumerable<GetDoctorDto>> GetAllDoctorsAsync()
         {
             IEnumerable<AppUser> appUsers = await _userManager.Users.AsNoTracking().ToListAsync();
             appUsers = appUsers.Where(u => _userManager.IsInRoleAsync(u, "doctor").Result);
-            return _mapper.Map<List<UserReturnDto>>(appUsers);
+            return _mapper.Map<List<GetDoctorDto>>(appUsers);
         }
 
-        public async Task<IEnumerable<UserReturnDto>> GetAllPatientAsync()
+        public async Task<IEnumerable<GetUserDto>> GetAllPatientAsync()
         {
             IEnumerable<AppUser> appUsers = await _userManager.Users.AsNoTracking().ToListAsync();
             appUsers = appUsers.Where(u => _userManager.IsInRoleAsync(u, "member").Result);
-            return _mapper.Map<List<UserReturnDto>>(appUsers);
+            return _mapper.Map<List<GetUserDto>>(appUsers);
         }
 
         public async Task<DoctorReturnDto> GetDoctorAsync(string id)
@@ -54,7 +54,7 @@ namespace Business.Concrete
             if (appUser == null) throw new CustomException(404, "Doctor does not exist");
             IEnumerable<DateTime> appointments = await _context.Appointments.AsNoTracking().Where(a => a.DoctorId == id).Select(a => a.StartTime).ToListAsync();
             DoctorReturnDto dto = _mapper.Map<DoctorReturnDto>(appUser);
-            dto.Appointments = appointments;
+            //dto.Statuses = appointments;
             return dto;
         }
 
@@ -62,6 +62,7 @@ namespace Business.Concrete
         {
             if (dto.Password != dto.PasswordConfirm) throw new CustomException(400, "Passwords do not match");
             AppUser user = new() { Name = dto.Name, Email = dto.Email, Surname = dto.Surname, UserName = dto.Email };
+            user.EmailConfirmed = true;
             IdentityResult result = await _userManager.CreateAsync(user, dto.Password);
             if (!result.Succeeded) throw new CustomException(400, result.Errors.First().Code.ToString());
             if (dto.Profile != null)
@@ -85,5 +86,88 @@ namespace Business.Concrete
             IEnumerable<DoctorSchdelueReturnDto> doctorReturnSchedules = _mapper.Map<IEnumerable<DoctorSchdelueReturnDto>>(appointments);
             return doctorReturnSchedules;
         }
+
+        public async Task<UserReturnDto> GetPatientAsync(string id)
+        {
+            AppUser? appUser = await _userManager.FindByIdAsync(id);
+
+            if (appUser == null || !(await _userManager.IsInRoleAsync(appUser, "member")))
+            {
+                throw new CustomException(404, "Patient does not exist or is unauthorized");
+            }
+
+            UserReturnDto dto = _mapper.Map<UserReturnDto>(appUser);
+            return dto;
+        }
+
+        public async Task<object> GetUserProfileAsync(string userId)
+        {
+            var user = await _context.Users.AsNoTracking()
+                .FirstOrDefaultAsync(u => u.Id == userId);
+
+            if (user == null) return null;
+
+            var roles = await _userManager.GetRolesAsync(user);
+
+            if (roles.Contains("doctor"))
+            {
+                var doctorAppointments = await _context.Appointments.AsNoTracking()
+                    .Where(a => a.DoctorId == userId)
+                    .ToListAsync();
+
+
+                return new GetDoctorDto{
+                Name=user.Name,
+                Surname=user.Surname,
+                Email=user.Email,
+                Profile =user.Profile,
+                BirthDate =user.BirthDate,
+                Description=user.Description
+                };
+            }
+            else if (roles.Contains("member"))
+            {
+                return new GetUserDto{
+                Name=user.Name,
+                Surname=user.Surname,
+                Email=user.Email,
+                Profile=user.Profile,
+                BirthDate=user.BirthDate
+                };
+            }
+            else
+            {
+                return new
+                {
+                    user.Name,
+                    user.Surname,
+                    user.Email,
+                    Role = "admin"
+                };
+            }
+        }
+
+        public async Task DeleteDoctorAsync(string id)
+        {
+            // Find the doctor
+            AppUser? appUser = await _userManager.Users.SingleOrDefaultAsync(a => a.Id == id);
+            if (appUser == null)
+                throw new CustomException(404, "Doctor not found");
+
+            // Handle related entities
+            var appointments = await _context.Appointments.Where(a => a.DoctorId == id).ToListAsync();
+            _context.Appointments.RemoveRange(appointments);
+
+            await _context.SaveChangesAsync();
+
+            // Delete the user
+            var result = await _userManager.DeleteAsync(appUser);
+            if (!result.Succeeded)
+            {
+                var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+                throw new CustomException(500, $"Failed to delete doctor: {errors}");
+            }
+        }
+
     }
 }

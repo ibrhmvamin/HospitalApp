@@ -3,7 +3,6 @@ using Business.Dtos.RoomDto;
 using DataAccess.Data;
 using DataAccess.Entities;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
@@ -19,37 +18,73 @@ namespace WebUI.Controllers
         private readonly IRoomService _roomService;
         private readonly UserManager<AppUser> _userManager;
         private readonly IHubContext<ChatHub> _hubContext;
-        private readonly DataContext _context;
 
-        public RoomController(IRoomService roomService, UserManager<AppUser> userManager, IHubContext<ChatHub> hubContext, DataContext context)
+        public RoomController(IRoomService roomService, UserManager<AppUser> userManager, IHubContext<ChatHub> hubContext)
         {
             _roomService = roomService;
             _userManager = userManager;
             _hubContext = hubContext;
-            _context = context;
         }
 
+        /// <summary>
+        /// Send a new message to a recipient.
+        /// </summary>
+        /// <param name="newMessageDto">DTO containing message details</param>
+        /// <returns>Status indicating success or failure</returns>
         [HttpPost("")]
-        public async Task<IActionResult> SendMessage(NewMessageDto newMessageDto)
+        public async Task<IActionResult> SendMessage([FromBody] NewMessageDto newMessageDto)
         {
-            await _roomService.SendMessageAsync(newMessageDto);
-            AppUser? appUser = await _userManager.Users.SingleOrDefaultAsync(u => u.Id == newMessageDto.ReceiverId);
-            if (appUser == null) return NotFound();
+            if (!ModelState.IsValid) return BadRequest(ModelState);
 
-            if (appUser?.ClientId != null && appUser != null)
-                await _hubContext.Clients.Client(appUser.ClientId).SendAsync("NewMessage", newMessageDto.Content, newMessageDto.SenderId);
+            try
+            {
+                // Send the message through the service
+                await _roomService.SendMessageAsync(newMessageDto);
 
-            return Ok();
+                // Find the recipient user
+                var recipient = await _userManager.Users
+                    .SingleOrDefaultAsync(u => u.Id == newMessageDto.ReceiverId);
+                if (recipient == null) return NotFound("Recipient not found");
+
+                // Notify the recipient via SignalR
+                if (!string.IsNullOrEmpty(recipient.ClientId))
+                {
+                    await _hubContext.Clients.Client(recipient.ClientId)
+                        .SendAsync("NewMessage", newMessageDto.Content, newMessageDto.SenderId);
+                }
+
+                return Ok("Message sent successfully");
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, $"An error occurred: {ex.Message}");
+            }
         }
 
+        /// <summary>
+        /// Retrieve messages for the logged-in user.
+        /// </summary>
+        /// <returns>List of messages</returns>
         [Authorize]
         [HttpGet("")]
         public async Task<IActionResult> GetMessages()
         {
-            AppUser? appUser = await _userManager.Users.SingleOrDefaultAsync(u => u.UserName == User.Identity.Name);
-            if (appUser == null) return NotFound();
-            IEnumerable<MessageReturnDto> messages = await _roomService.GetMessagesAsync(appUser.Id);
-            return Ok(messages);
+            try
+            {
+                // Find the logged-in user
+                var currentUser = await _userManager.Users
+                    .SingleOrDefaultAsync(u => u.UserName == User.Identity.Name);
+
+                if (currentUser == null) return NotFound("User not found");
+
+                // Get messages for the user
+                var messages = await _roomService.GetMessagesAsync(currentUser.Id);
+                return Ok(messages);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, $"An error occurred: {ex.Message}");
+            }
         }
     }
 }

@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace Business.Dtos.UserDtos
 {
-    public class DoctorCreateDto
+    public class DoctorUpdateDto
     {
         [Required]
         [MaxLength(20)]
@@ -22,15 +22,6 @@ namespace Business.Dtos.UserDtos
         [EmailAddress]
         public string Email { get; set; }
 
-        [Required]
-        [MinLength(6)]
-        [MaxLength(25)]
-        public string Password { get; set; }
-
-        [Required]
-        [Compare("Password", ErrorMessage = "Passwords do not match.")]
-        public string PasswordConfirm { get; set; }
-
         public IFormFile Profile { get; set; }
 
         [MaxLength(200)]
@@ -41,3 +32,4 @@ namespace Business.Dtos.UserDtos
 
     }
 }
+

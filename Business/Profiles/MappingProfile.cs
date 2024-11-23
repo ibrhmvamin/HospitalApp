@@ -17,7 +17,13 @@ namespace Business.Profiles
         {
             CreateMap<AppointmentCreateDto, Appointment>();
             CreateMap<AppUser, UserReturnDto>();
+            CreateMap<AppUser, UserUpdateDto>();
+            CreateMap<AppUser, GetUserDto>();
+            CreateMap<AppUser, GetDoctorDto>();
+            CreateMap<AppUser, DoctorUpdateDto>();
             CreateMap<Appointment, AppointmentReturnDto>().ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.Status.ToString()));
+            CreateMap<AppUser, DoctorReturnDto>()
+            .ForMember(dest => dest.Statuses, opt => opt.MapFrom(src => src.AppointmentAsPatient.Concat(src.AppointmentAsDoctor).Select(a => a.Status)));
             CreateMap<AppUser, DoctorReturnDto>();
             CreateMap<Appointment, DoctorSchdelueReturnDto>();
             CreateMap<Message, MessageReturnDto>();

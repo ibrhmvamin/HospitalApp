@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -34,14 +35,15 @@ namespace Business.Concrete
             if (signUpDto.Profile != null)
             {
                 if (!signUpDto.Profile.IsImage()) throw new CustomException(400, "Invalid file format");
-                if (signUpDto.Profile.DoesSizeExceed(100)) throw new CustomException(400, "File size exceeds the limit");
+                if (signUpDto.Profile.DoesSizeExceed(100 * 1024)) throw new CustomException(400, "File size exceeds the limit");
                 string filename = await signUpDto.Profile.SaveFileAsync();
                 user.Profile = filename;
             }
             await _userManager.AddToRoleAsync(user, "member");
             string token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
 
-            string link = $"http://localhost:5274/auth/verify-email?token={token}&email={user.Email}";
+            //todo: front link
+            string link = $"http://localhost:5174/verify-email?token={token}&email={user.Email}";
 
             string body = "";
             using (StreamReader stream = new("wwwroot/templates/verifyEmail.html"))
@@ -73,15 +75,33 @@ namespace Business.Concrete
             AppUser? appUser = await _userManager.Users.FirstOrDefaultAsync(u => u.Email == confirmEmailDto.Email);
             if (appUser == null) throw new CustomException(400, $"Unable to load user {confirmEmailDto.Email}");
             await _userManager.ConfirmEmailAsync(appUser, confirmEmailDto.Token);
+            appUser.EmailConfirmed = true;
             await _userManager.UpdateSecurityStampAsync(appUser);
         }
 
-        public async Task<string> ForgotPasswordAsync(string email)
+        public async Task ForgotPasswordAsync(string email)
         {
             AppUser? appUser = await _userManager.Users.FirstOrDefaultAsync(u => u.Email == email);
             if (appUser == null) throw new CustomException(404, "User does not exist");
             string token = await _userManager.GeneratePasswordResetTokenAsync(appUser);
-            return token;
+
+
+            string body = "";
+            NameValueCollection queryString = System.Web.HttpUtility.ParseQueryString(string.Empty);
+
+            queryString.Add("token", token);
+            queryString.Add("email", email);
+
+            string link = $"http://localhost:5174/reset-password?{queryString}";
+
+            using (StreamReader stream = new("wwwroot/templates/verifyEmail.html"))
+            {
+                body = stream.ReadToEnd();
+            };
+            body = body.Replace("{{link}}", link);
+            body = body.Replace("{{username}}", $"{appUser.Name} {appUser.Surname}");
+
+            _emailService.SendEmail(appUser.Email, "Reset Password", body);
         }
 
         public async Task ResetPasswordAsync(ResetPasswordDto resetPasswordDto)
@@ -89,7 +109,7 @@ namespace Business.Concrete
             AppUser? appUser = await _userManager.Users.FirstOrDefaultAsync(u => u.Email == resetPasswordDto.Email);
             if (appUser == null) throw new CustomException(404, "User does not exist");
             var result = await _userManager.ResetPasswordAsync(appUser, resetPasswordDto.Token, resetPasswordDto.Password);
-            if (!result.Succeeded) throw new CustomException(404, "Expired Token");
+            if (!result.Succeeded) throw new CustomException(400, "Expired Token");
             await _userManager.UpdateSecurityStampAsync(appUser);
         }
     }

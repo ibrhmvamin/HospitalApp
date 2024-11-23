@@ -47,8 +47,8 @@ namespace WebUI.Controllers
         [HttpPost("forgot-password")]
         public async Task<IActionResult> ForgotPassword(string email)
         {
-            string token = await _authenticationService.ForgotPasswordAsync(email);
-            return Ok(token);
+            await _authenticationService.ForgotPasswordAsync(email);
+            return Ok();
         }
     }
 }

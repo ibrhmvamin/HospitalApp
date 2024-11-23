@@ -10,7 +10,7 @@ namespace Business.Dtos.AppointmentDto
     public class AppointmentCreateDto
     {
         [Required]
-        public string StartTime { get; set; }
+        public DateTime StartTime { get; set; }
         [Required]
         public string DoctorId { get; set; }
     }

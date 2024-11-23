@@ -43,10 +43,7 @@ namespace Business.Concrete
             AppUser? patient = await _context.Users.SingleOrDefaultAsync(u => u.Id == patientId);
             if (patient is null || !await _userManager.IsInRoleAsync(patient, "member")) throw new CustomException(404, "Patient does not exist");
 
-            DateTime StartTime = DateTime.ParseExact(
-                createAppointmentDto.StartTime,
-                "dd-MM-yyyy HH:mm",
-                CultureInfo.InvariantCulture);
+            DateTime StartTime = createAppointmentDto.StartTime;
             DateTime EndTime = StartTime + TimeSpan.FromMinutes(30);
 
             AppUser? doctor = await _context.Users.SingleOrDefaultAsync(u => u.Id == createAppointmentDto.DoctorId);

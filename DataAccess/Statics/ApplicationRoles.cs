@@ -24,16 +24,16 @@ namespace DataAccess.Statics
 
             var defaultUser = new AppUser
             {
-                UserName = "aminibrahimov52@gmail.com",
-                Name = "Amin",
-                Surname = "Ibrahimov",
-                Email = "aminibrahimov52@gmail.com",
+                UserName = "admin@gmail.com",
+                Name = "Admin",
+                Surname = "Admin",
+                Email = "admin@gmail.com",
                 EmailConfirmed = true
             };
 
             if (userManager.Users.All(u => u.UserName != defaultUser.UserName))
             {
-                var result = await userManager.CreateAsync(defaultUser, "Amin2005");
+                var result = await userManager.CreateAsync(defaultUser, "Admin.2005");
                 if (result.Succeeded)
                 {
                     await userManager.AddToRoleAsync(defaultUser, "admin");

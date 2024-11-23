@@ -12,6 +12,7 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Any;
 using Microsoft.OpenApi.Models;
 using System.Text;
+using WebUI.Converters;
 using WebUI.Hubs;
 using WebUI.Middlewares;
 using WebUI.Services;
@@ -22,12 +23,12 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowSpecificOrigin",
-        builder => builder.WithOrigins("http://localhost:5173")
+        builder => builder.WithOrigins("http://localhost:5174", "http://localhost:5175")
                           .AllowAnyHeader()
                           .AllowAnyMethod()
                           .AllowCredentials());
 });
-builder.Services.AddControllers();
+builder.Services.AddControllers().AddJsonOptions(options => options.JsonSerializerOptions.Converters.Add(new DateTimeConverter())); 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -38,11 +39,8 @@ builder.Services.AddSwaggerGen(c =>
         Example = new OpenApiString("21-10-2024 14:30")
     });
 });
-//builder.Services.AddDistributedMemoryCache();
-//builder.Services.AddFluentValidationAutoValidation();
-//builder.Services.AddFluentValidationClientsideAdapters();
+
 builder.Services.AddSignalR();
-//builder.Services.AddFluentValidationRulesToSwagger();
 builder.Services.AddDbContext<DataContext>(options => options.UseSqlServer(builder.Configuration.GetConnectionString("Default")));
 builder.Services.AddScoped<Business.Abstract.IAuthenticationService, Business.Concrete.AuthenticationService>();
 builder.Services.AddScoped<ITokenService, TokenService>();
@@ -50,8 +48,7 @@ builder.Services.AddScoped<IAppointmentService, AppointmentService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IRoomService, RoomService>();
-//builder.Services.AddHangfire(config => config.UseSqlServerStorage(builder.Configuration.GetConnectionString("DefaultConnection")));
-//builder.Services.AddHangfireServer();
+
 builder.Services.AddIdentity<AppUser, IdentityRole>(options =>
 {
     options.SignIn.RequireConfirmedEmail = true;
@@ -96,6 +93,8 @@ builder.Services.AddAuthentication(cfg =>
         }
     };
 });
+
+builder.Services.AddHttpContextAccessor();
 builder.Services.AddAuthentication();
 builder.Services.AddScoped<AppointmentReminderService>();
 builder.Services.AddSwaggerGen(opt =>
@@ -127,15 +126,9 @@ builder.Services.AddSwaggerGen(opt =>
     });
 });
 
-//var conn = builder.Configuration.GetConnectionString("Default");
-//builder.Services.AddDbContext<DataContext>(opt =>
-//{
-//    opt.UseSqlServer(conn);
-//});
 
 var app = builder.Build();
 
-// Seed data for roles and admin user
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
@@ -148,7 +141,7 @@ using (var scope = app.Services.CreateScope())
 using (var scope = app.Services.CreateScope())
 {
     var reminderService = scope.ServiceProvider.GetRequiredService<AppointmentReminderService>();
-    reminderService.CheckAndSendReminders();
+    await reminderService.CheckAndSendReminders();
 }
 
 
@@ -159,12 +152,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseMiddleware<ExceptionMiddleware>();
-//app.UseHangfireDashboard();
-//RecurringJob.AddOrUpdate<IAppointmentService>(
-//        "UpdateExpiredAppointments",
-//        service => service.UpdateExpiredAppointmentsAsync(),
-//        Cron.MinuteInterval(15));
 app.UseCors("AllowSpecificOrigin");
+app.UseStaticFiles();
 app.UseAuthorization();
 app.MapHub<ChatHub>("/appointmentHub");
 app.MapControllers();
