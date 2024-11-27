@@ -32,7 +32,7 @@ namespace Business.Concrete
         {
             Appointment? appointment = await _context.Appointments.SingleOrDefaultAsync(a => a.Id.ToString() == appointmentId);
             if (appointment == null) throw new CustomException(404, "Appointment does not exist");
-            if (appointment.StartTime > DateTime.Now) throw new CustomException(400, "Appointment is inactive");
+            if (appointment.StartTime < DateTime.Now) throw new CustomException(400, "Appointment is inactive");
             appointment.Status = status;
             var patientId = appointment.PatientId;
             await _context.SaveChangesAsync();
@@ -89,5 +89,18 @@ namespace Business.Concrete
                 .AsNoTracking()
                 .ToListAsync();
         }
+
+        public async Task UpdateExpiredAppointmentsAsync()
+        {
+            var now = DateTime.Now;
+            var pendingAppointments = await _context.Appointments
+                .Where(a => a.Status == Status.PENDING && a.StartTime < now)
+                .ToListAsync();
+
+            foreach (var appointment in pendingAppointments) appointment.Status = Status.REJECTED;
+
+            await _context.SaveChangesAsync();
+        }
     }
 }
+

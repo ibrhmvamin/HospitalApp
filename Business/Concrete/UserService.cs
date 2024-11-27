@@ -33,11 +33,11 @@ namespace Business.Concrete
             return _mapper.Map<IEnumerable<UserReturnDto>>(appUsers);
         }
 
-        public async Task<IEnumerable<GetDoctorDto>> GetAllDoctorsAsync()
+        public async Task<IEnumerable<DoctorReturnDto>> GetAllDoctorsAsync()
         {
             IEnumerable<AppUser> appUsers = await _userManager.Users.AsNoTracking().ToListAsync();
             appUsers = appUsers.Where(u => _userManager.IsInRoleAsync(u, "doctor").Result);
-            return _mapper.Map<List<GetDoctorDto>>(appUsers);
+            return _mapper.Map<List<DoctorReturnDto>>(appUsers);
         }
 
         public async Task<IEnumerable<GetUserDto>> GetAllPatientAsync()
@@ -121,8 +121,8 @@ namespace Business.Concrete
                 Surname=user.Surname,
                 Email=user.Email,
                 Profile =user.Profile,
-                BirthDate =user.BirthDate,
-                Description=user.Description
+                Description=user.Description,
+                BirthDate =user.BirthDate
                 };
             }
             else if (roles.Contains("member"))

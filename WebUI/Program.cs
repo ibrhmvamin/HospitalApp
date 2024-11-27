@@ -4,6 +4,7 @@ using Business.Profiles;
 using DataAccess.Data;
 using DataAccess.Entities;
 using DataAccess.Statics;
+using Hangfire;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
@@ -48,6 +49,8 @@ builder.Services.AddScoped<IAppointmentService, AppointmentService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IRoomService, RoomService>();
+builder.Services.AddHangfire(config => config.UseSqlServerStorage(builder.Configuration.GetConnectionString("Default")));
+builder.Services.AddHangfireServer();
 
 builder.Services.AddIdentity<AppUser, IdentityRole>(options =>
 {
@@ -152,6 +155,11 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseMiddleware<ExceptionMiddleware>();
+app.UseHangfireDashboard();
+RecurringJob.AddOrUpdate<IAppointmentService>(
+        "UpdateExpiredAppointments",
+        service => service.UpdateExpiredAppointmentsAsync(),
+        Cron.MinuteInterval(15));
 app.UseCors("AllowSpecificOrigin");
 app.UseStaticFiles();
 app.UseAuthorization();

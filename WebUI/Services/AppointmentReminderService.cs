@@ -1,4 +1,5 @@
 ﻿using Business.Abstract;
+using Hangfire;
 
 namespace WebUI.Services
 {
@@ -6,22 +7,23 @@ namespace WebUI.Services
     {
         private readonly IAppointmentService _appointmentService;
         private readonly IEmailService _emailService;
-        //private readonly IRecurringJobManager _recurringJobManager;
+        private readonly IRecurringJobManager _recurringJobManager;
 
-        public AppointmentReminderService(IAppointmentService appointmentService, IEmailService emailService/*, IRecurringJobManager recurringJobManager*/)
+        public AppointmentReminderService(IAppointmentService appointmentService, IEmailService emailService, IRecurringJobManager recurringJobManager)
         {
             _appointmentService = appointmentService;
             _emailService = emailService;
-            //_recurringJobManager = recurringJobManager;
+            _recurringJobManager = recurringJobManager;
         }
 
-        //public void ScheduleAppointmentReminders()
-        //{
-        //    _recurringJobManager.AddOrUpdate(
-        //        "SendAppointmentReminders",
-        //        () => CheckAndSendReminders()
-        //    );
-        //}
+        public void ScheduleAppointmentReminders()
+        {
+            _recurringJobManager.AddOrUpdate(
+                "SendAppointmentReminders",
+                () => CheckAndSendReminders(),
+                Cron.Minutely
+            );
+        }
 
         public async Task CheckAndSendReminders()
         {

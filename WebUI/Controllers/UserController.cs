@@ -111,7 +111,7 @@ namespace WebUI.Controllers
         [HttpGet("doctors")]
         public async Task<IActionResult> GetDoctors()
         {
-            IEnumerable<GetDoctorDto> doctors = await _userService.GetAllDoctorsAsync();
+            IEnumerable<DoctorReturnDto> doctors = await _userService.GetAllDoctorsAsync();
             return Ok(doctors);
         }
 

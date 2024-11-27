@@ -15,5 +15,6 @@ namespace Business.Abstract
         Task ChangeStatusAsync(string appointmentId, Status status);
         Task<IEnumerable<AppointmentReturnDto>> GetAppointmentsAsync(string userId);
         Task<List<Appointment>> GetAppointmentsStartingWithinOneHour();
+        Task UpdateExpiredAppointmentsAsync();
     }
 }

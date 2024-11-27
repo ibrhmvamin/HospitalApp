@@ -9,7 +9,7 @@ namespace Business.Abstract
 {
         public interface IUserService
     {
-        Task<IEnumerable<GetDoctorDto>> GetAllDoctorsAsync();
+        Task<IEnumerable<DoctorReturnDto>> GetAllDoctorsAsync();
         Task<IEnumerable<GetUserDto>> GetAllPatientAsync();
         Task<IEnumerable<UserReturnDto>> GetAllUsersAsync();
         Task<UserReturnDto> GetPatientAsync(string id);
