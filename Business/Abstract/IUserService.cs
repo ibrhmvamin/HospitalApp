@@ -18,6 +18,8 @@ namespace Business.Abstract
         Task<string> CreateDoctorAsync(DoctorCreateDto dto);
         Task<IEnumerable<DoctorSchdelueReturnDto>> GetDoctorSchedule(string doctorId);
         Task DeleteDoctorAsync(string id);
+        Task DeletePatientAsync(string id);
+        Task UpdateUserAsync(string id,UserUpdateDto dto);
 
     }
 }

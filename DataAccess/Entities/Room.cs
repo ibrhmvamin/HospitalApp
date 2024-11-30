@@ -8,6 +8,7 @@ namespace DataAccess.Entities
 {
     public class Room : BaseEntity
     {
+        public Guid Id { get; set; }  
         public string SenderId { get; set; }
         public string ReceiverId { get; set; }
         public AppUser Sender { get; set; }

@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
+using System.Reflection;
 using WebUI.Hubs;
 
 namespace WebUI.Controllers
@@ -18,6 +19,7 @@ namespace WebUI.Controllers
         private readonly IRoomService _roomService;
         private readonly UserManager<AppUser> _userManager;
         private readonly IHubContext<ChatHub> _hubContext;
+        private readonly DataContext _context;
 
         public RoomController(IRoomService roomService, UserManager<AppUser> userManager, IHubContext<ChatHub> hubContext)
         {
@@ -31,6 +33,7 @@ namespace WebUI.Controllers
         /// </summary>
         /// <param name="newMessageDto">DTO containing message details</param>
         /// <returns>Status indicating success or failure</returns>
+        // Existing code inside RoomController
         [HttpPost("")]
         public async Task<IActionResult> SendMessage([FromBody] NewMessageDto newMessageDto)
         {
@@ -41,16 +44,14 @@ namespace WebUI.Controllers
                 // Send the message through the service
                 await _roomService.SendMessageAsync(newMessageDto);
 
-                // Find the recipient user
+                // Notify the recipient via SignalR
                 var recipient = await _userManager.Users
                     .SingleOrDefaultAsync(u => u.Id == newMessageDto.ReceiverId);
-                if (recipient == null) return NotFound("Recipient not found");
 
-                // Notify the recipient via SignalR
-                if (!string.IsNullOrEmpty(recipient.ClientId))
+                if (recipient != null && !string.IsNullOrEmpty(recipient.ClientId))
                 {
                     await _hubContext.Clients.Client(recipient.ClientId)
-                        .SendAsync("NewMessage", newMessageDto.Content, newMessageDto.SenderId);
+                        .SendAsync("ReceiveMessage", newMessageDto.Content, newMessageDto.SenderId);
                 }
 
                 return Ok("Message sent successfully");
@@ -60,6 +61,7 @@ namespace WebUI.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError, $"An error occurred: {ex.Message}");
             }
         }
+
 
         /// <summary>
         /// Retrieve messages for the logged-in user.

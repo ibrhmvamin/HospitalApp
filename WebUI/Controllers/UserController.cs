@@ -138,8 +138,16 @@ namespace WebUI.Controllers
             return NoContent();
         }
 
+        [HttpDelete("patients/{id}")]
+        [Authorize(Roles = "admin")]
+        public async Task<IActionResult> DeletePatient(string id)
+        {
+            await _userService.DeletePatientAsync(id);
+            return NoContent();
+        }
+
         [HttpPut("doctors/{id}")]
-        public async Task<IActionResult> UpdateDoctor(string id, [FromForm] DoctorUpdateDto dto)
+        public async Task<IActionResult> UpdateDoctor(string id, [FromForm] UserUpdateDto dto)
         {
             // Retrieve the doctor entity from the database
             var doctor = await _userManager.Users.SingleOrDefaultAsync(u => u.Id == id);
@@ -151,7 +159,6 @@ namespace WebUI.Controllers
             doctor.Surname = dto.Surname;
             doctor.Email = dto.Email;
             doctor.BirthDate = dto.BirthDate;
-            doctor.Description = dto.Description;
 
             // Handle profile image if uploaded
             if (dto.Profile != null)
@@ -174,6 +181,30 @@ namespace WebUI.Controllers
 
             // Return success response
             return Ok(new { message = "Doctor updated successfully" });
+        }
+
+        [HttpPut("patients/{id}")]
+        [Authorize(Roles = "admin")] // Ensure only admins can update user data
+        public async Task<IActionResult> UpdateUser(string id, [FromForm] UserUpdateDto userDto)
+        {
+            // Validate the input data
+            if (userDto == null)
+                return BadRequest(new { message = "Invalid user data" });
+
+            // Use the service layer to update the user
+            try
+            {
+                await _userService.UpdateUserAsync(id, userDto);
+                return Ok(new { message = "User updated successfully" });
+            }
+            catch (CustomException ex)
+            {
+                return StatusCode(ex.Code, new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "An unexpected error occurred", error = ex.Message });
+            }
         }
 
     }

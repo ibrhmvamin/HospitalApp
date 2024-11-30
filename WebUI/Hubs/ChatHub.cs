@@ -1,13 +1,16 @@
-﻿using DataAccess.Entities;
+﻿using DataAccess.Data;
+using DataAccess.Entities;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
+using System.Reflection;
 
 namespace WebUI.Hubs
 {
     public class ChatHub : Hub
     {
         private readonly UserManager<AppUser> _userManager;
+        private readonly DataContext _context;
 
         public ChatHub(UserManager<AppUser> userManager)
         {
@@ -40,27 +43,50 @@ namespace WebUI.Hubs
             }
             return base.OnDisconnectedAsync(exception);
         }
-        public async Task SendMessage(string message, string recipientId)
+        public async Task SendMessage(string senderId, string receiverId, string content)
         {
-            // Get the current user's identity
-            var senderEmail = Context.User?.Identity?.Name;
-            if (senderEmail == null) return;
+            // Check if the room already exists
+            var room = await _context.Rooms.FirstOrDefaultAsync(r =>
+                (r.SenderId == senderId && r.ReceiverId == receiverId) ||
+                (r.SenderId == receiverId && r.ReceiverId == senderId));
 
-            // Find the sender in the database
-            var senderUser = await _userManager.FindByNameAsync(senderEmail);
-            if (senderUser == null) return;
+            // Log room existence
+            Console.WriteLine($"Room found: {room != null}");
 
-            // Find the recipient by their ID
-            var recipientUser = await _userManager.FindByIdAsync(recipientId);
-            if (recipientUser == null || string.IsNullOrEmpty(recipientUser.ClientId))
+            // If the room doesn't exist, create it
+            if (room == null)
             {
-                await Clients.Caller.SendAsync("ReceiveMessage", "Recipient not available.", senderUser.Id);
-                return;
+                room = new Room
+                {
+                    Id = Guid.NewGuid(),
+                    SenderId = senderId,
+                    ReceiverId = receiverId,
+                };
+
+                _context.Rooms.Add(room);
+                await _context.SaveChangesAsync();
+                Console.WriteLine($"Room created: {room.Id}");
             }
 
-            // Send the message to the recipient's client
-            await Clients.Client(recipientUser.ClientId).SendAsync("ReceiveMessage", message, senderUser.Id);
-        }
+            // Ensure RoomId is correct before creating a message
+            Console.WriteLine($"Using RoomId: {room.Id}");
 
+            // Create and save the message
+            var message = new Message
+            {
+                Content = content,
+                SenderId = senderId,
+                ReceiverId = receiverId,
+                RoomId = room.Id,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            _context.Messages.Add(message);
+            await _context.SaveChangesAsync();
+            Console.WriteLine("Message saved");
+
+            // Send the message to clients in the room
+            await Clients.Group(room.Id.ToString()).SendAsync("ReceiveMessage", message);
+        }
     }
 }

@@ -30,7 +30,14 @@ public class RoomService : IRoomService
         if (await _userManager.IsInRoleAsync(sender, "member") && await _userManager.IsInRoleAsync(receiver, "member") || await _userManager.IsInRoleAsync(sender, "doctor") && await _userManager.IsInRoleAsync(receiver, "doctor")) throw new CustomException(400, "Invalid users");
         Room? room = await _context.Rooms.SingleOrDefaultAsync(r => r.SenderId == newMessageDto.SenderId && r.ReceiverId == newMessageDto.ReceiverId || r.ReceiverId == newMessageDto.SenderId && r.SenderId == newMessageDto.ReceiverId);
         room ??= new() { ReceiverId = newMessageDto.ReceiverId, SenderId = newMessageDto.SenderId };
-        Message newMessage = new() { RoomId = room.Id, ReceiverId = newMessageDto.ReceiverId, SenderId = newMessageDto.SenderId, Content = newMessageDto.Content };
+        Message newMessage = new()
+        {
+            RoomId = room.Id, 
+            ReceiverId = newMessageDto.ReceiverId, 
+            SenderId = newMessageDto.SenderId, 
+            Content = newMessageDto.Content 
+        };
+        await _context.Messages.AddAsync(newMessage);
         await _context.SaveChangesAsync();
     }
 

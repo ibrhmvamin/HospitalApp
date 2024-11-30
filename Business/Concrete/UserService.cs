@@ -169,5 +169,60 @@ namespace Business.Concrete
             }
         }
 
+        public async Task DeletePatientAsync(string id)
+        {
+            // Find the doctor
+            AppUser? appUser = await _userManager.Users.SingleOrDefaultAsync(a => a.Id == id);
+            if (appUser == null)
+                throw new CustomException(404, "Patient not found");
+
+            // Handle related entities
+            var appointments = await _context.Appointments.Where(a => a.PatientId == id).ToListAsync();
+            _context.Appointments.RemoveRange(appointments);
+
+            await _context.SaveChangesAsync();
+
+            // Delete the user
+            var result = await _userManager.DeleteAsync(appUser);
+            if (!result.Succeeded)
+            {
+                var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+                throw new CustomException(500, $"Failed to delete doctor: {errors}");
+            }
+
+        }
+
+        public async Task UpdateUserAsync(string id, UserUpdateDto userDto)
+        {
+            // Find the user by ID
+            var user = await _userManager.FindByIdAsync(id);
+            if (user == null)
+                throw new CustomException(404, "User not found");
+
+            // Update fields
+            user.Name = userDto.Name;
+            user.Surname = userDto.Surname;
+            user.Email = userDto.Email;
+            user.BirthDate = userDto.BirthDate;
+
+            // Handle profile image
+            if (userDto.Profile != null)
+            {
+                if (!userDto.Profile.IsImage())
+                    throw new CustomException(400, "Invalid file format");
+
+                if (userDto.Profile.DoesSizeExceed(100 * 1024))
+                    throw new CustomException(400, "File size exceeds the limit");
+
+                string filename = await userDto.Profile.SaveFileAsync();
+                user.Profile = filename;
+            }
+
+            // Update the user in the database
+            var result = await _userManager.UpdateAsync(user);
+            if (!result.Succeeded)
+                throw new CustomException(400, result.Errors.First().Description);
+        }
+
     }
 }
