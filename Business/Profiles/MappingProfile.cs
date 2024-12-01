@@ -27,6 +27,7 @@ namespace Business.Profiles
             CreateMap<AppUser, DoctorReturnDto>();
             CreateMap<Appointment, DoctorSchdelueReturnDto>();
             CreateMap<Message, MessageReturnDto>();
+            CreateMap<Message, NewMessageDto>();
         }
     }
 }

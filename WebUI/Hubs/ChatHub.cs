@@ -12,9 +12,10 @@ namespace WebUI.Hubs
         private readonly UserManager<AppUser> _userManager;
         private readonly DataContext _context;
 
-        public ChatHub(UserManager<AppUser> userManager)
+        public ChatHub(UserManager<AppUser> userManager, DataContext context)
         {
             _userManager = userManager;
+            _context = context;
         }
 
         public override Task OnConnectedAsync()
@@ -43,50 +44,22 @@ namespace WebUI.Hubs
             }
             return base.OnDisconnectedAsync(exception);
         }
-        public async Task SendMessage(string senderId, string receiverId, string content)
+        public async Task SendMessage(string senderId, string receiverId, string messageContent)
         {
-            // Check if the room already exists
-            var room = await _context.Rooms.FirstOrDefaultAsync(r =>
-                (r.SenderId == senderId && r.ReceiverId == receiverId) ||
-                (r.SenderId == receiverId && r.ReceiverId == senderId));
-
-            // Log room existence
-            Console.WriteLine($"Room found: {room != null}");
-
-            // If the room doesn't exist, create it
-            if (room == null)
-            {
-                room = new Room
-                {
-                    Id = Guid.NewGuid(),
-                    SenderId = senderId,
-                    ReceiverId = receiverId,
-                };
-
-                _context.Rooms.Add(room);
-                await _context.SaveChangesAsync();
-                Console.WriteLine($"Room created: {room.Id}");
-            }
-
-            // Ensure RoomId is correct before creating a message
-            Console.WriteLine($"Using RoomId: {room.Id}");
-
-            // Create and save the message
             var message = new Message
             {
-                Content = content,
+                Id = Guid.NewGuid(),
+                Content = messageContent,
+                CreatedAt = DateTime.UtcNow,
                 SenderId = senderId,
-                ReceiverId = receiverId,
-                RoomId = room.Id,
-                CreatedAt = DateTime.UtcNow
+                ReceiverId = receiverId
             };
 
             _context.Messages.Add(message);
             await _context.SaveChangesAsync();
-            Console.WriteLine("Message saved");
 
-            // Send the message to clients in the room
-            await Clients.Group(room.Id.ToString()).SendAsync("ReceiveMessage", message);
+            await Clients.User(receiverId).SendAsync("ReceiveMessage", senderId, messageContent);
         }
+
     }
 }

@@ -11,5 +11,6 @@ namespace Business.Dtos.RoomDto
         public string Content { get; set; }
         public string SenderId { get; set; }
         public string ReceiverId { get; set; }
+        public DateTime CreatedAt { get; set; }
     }
 }
