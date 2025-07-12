@@ -1,4 +1,5 @@
-﻿using Business.Dtos.UserDtos;
+﻿using Business.Dtos.AppointmentDto;
+using Business.Dtos.UserDtos;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -20,6 +21,7 @@ namespace Business.Abstract
         Task DeleteDoctorAsync(string id);
         Task DeletePatientAsync(string id);
         Task UpdateUserAsync(string id,UserUpdateDto dto);
-
+        Task BanUserAsync(string userId, DateTime? until = null);
+        Task UnbanUserAsync(string userId);
     }
 }

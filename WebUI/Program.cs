@@ -1,4 +1,4 @@
-using Business.Abstract;
+﻿using Business.Abstract;
 using Business.Concrete;
 using Business.Profiles;
 using DataAccess.Data;
@@ -12,6 +12,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Any;
 using Microsoft.OpenApi.Models;
+using System.Security.Claims;
 using System.Text;
 using WebUI.Converters;
 using WebUI.Hubs;
@@ -24,7 +25,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowSpecificOrigin",
-        builder => builder.WithOrigins("http://localhost:5174", "http://localhost:5175")
+        builder => builder.WithOrigins("http://localhost:5173","http://localhost:5174", "http://localhost:5175")
                           .AllowAnyHeader()
                           .AllowAnyMethod()
                           .AllowCredentials());
@@ -63,39 +64,61 @@ builder.Services.AddAutoMapper(options => options.AddProfile<MappingProfile>());
 builder.Services.AddAuthentication(cfg =>
 {
     cfg.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    cfg.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-    cfg.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
-}).AddJwtBearer(x =>
+    cfg.DefaultChallengeScheme    = JwtBearerDefaults.AuthenticationScheme;
+    cfg.DefaultScheme             = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(x =>
 {
     x.RequireHttpsMetadata = false;
-    x.SaveToken = false;
+    x.SaveToken            = false;
+
     x.TokenValidationParameters = new TokenValidationParameters
     {
         ValidateIssuerSigningKey = true,
-        IssuerSigningKey = new SymmetricSecurityKey(
-            Encoding.UTF8
-            .GetBytes(builder.Configuration["JWT:SecretKey"])
+        IssuerSigningKey         = new SymmetricSecurityKey(
+            Encoding.UTF8.GetBytes(builder.Configuration["JWT:SecretKey"])
         ),
         ValidateIssuer = false,
         ValidateAudience = false,
         ClockSkew = TimeSpan.Zero
     };
+
     x.Events = new JwtBearerEvents
     {
         OnMessageReceived = context =>
         {
             var accessToken = context.Request.Query["access_token"];
-            var path = context.HttpContext.Request.Path;
+            var path        = context.HttpContext.Request.Path;
 
-            if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/appointmenthub"))
+            if (!string.IsNullOrEmpty(accessToken) &&
+                path.StartsWithSegments("/appointmenthub"))
             {
                 context.Token = accessToken;
             }
 
             return Task.CompletedTask;
+        },
+
+        OnTokenValidated = async context =>
+        {
+            var userManager = context.HttpContext.RequestServices
+                               .GetRequiredService<UserManager<AppUser>>();
+
+            var userId = context.Principal!.FindFirstValue(ClaimTypes.NameIdentifier);
+            var user   = await userManager.FindByIdAsync(userId);
+
+            var nowUtc = DateTime.UtcNow;
+
+            if (user == null ||
+                user.IsBanned ||
+                (user.BannedUntil.HasValue && user.BannedUntil > nowUtc))
+            {
+                context.Fail("User is banned.");
+            }
         }
     };
 });
+
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddAuthentication();

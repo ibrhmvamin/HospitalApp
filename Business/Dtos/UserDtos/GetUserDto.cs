@@ -28,5 +28,7 @@ namespace Business.Dtos.UserDtos
 
         [Required]
         public DateTime BirthDate { get; set; }
+        public bool IsBanned { get; set; }
+        public DateTime? BannedUntil { get; set; }
     }
 }

@@ -16,5 +16,6 @@ namespace Business.Abstract
         Task<IEnumerable<AppointmentReturnDto>> GetAppointmentsAsync(string userId);
         Task<List<Appointment>> GetAppointmentsStartingWithinOneHour();
         Task UpdateExpiredAppointmentsAsync();
+        Task<IEnumerable<AppointmentReturnDto>> GetAllAppointmentsAsync();
     }
 }

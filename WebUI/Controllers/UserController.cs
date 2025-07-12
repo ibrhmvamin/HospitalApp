@@ -51,18 +51,15 @@ namespace WebUI.Controllers
             if (string.IsNullOrEmpty(userId))
                 return Unauthorized();
 
-            // Find the user
             var user = await _userManager.FindByIdAsync(userId);
             if (user == null)
                 throw new CustomException(404, "User not found");
 
-            // Update common fields
             user.Name = userDto.Name;
             user.Surname = userDto.Surname;
             user.Email = userDto.Email;
             user.BirthDate = userDto.BirthDate;
 
-            // Handle profile image if uploaded
             if (userDto.Profile != null)
             {
                 if (!userDto.Profile.IsImage())
@@ -71,10 +68,8 @@ namespace WebUI.Controllers
                 if (userDto.Profile.DoesSizeExceed(100 * 1024))
                     throw new CustomException(400, "File size exceeds the limit of 100KB.");
 
-                // Save the profile image and set the filename to the user's profile
                 string filename = await userDto.Profile.SaveFileAsync();
 
-                // Delete old profile picture if it exists
                 if (!string.IsNullOrEmpty(user.Profile))
                 {
                     var oldFilePath = Path.Combine("wwwroot/", user.Profile);
@@ -82,10 +77,9 @@ namespace WebUI.Controllers
                         System.IO.File.Delete(oldFilePath);
                 }
 
-                user.Profile = filename; // Update the profile image for the existing user entity
+                user.Profile = filename; 
             }
 
-            // Update the user
             var result = await _userManager.UpdateAsync(user);
             if (!result.Succeeded)
                 throw new CustomException(400, result.Errors.First().Description);
@@ -207,5 +201,25 @@ namespace WebUI.Controllers
             }
         }
 
+        [Authorize(Roles = "admin")]
+        [HttpPut("ban/{userId}")]
+        public async Task<IActionResult> BanUser(string userId, [FromQuery] DateTime? until)
+        {
+            await _userService.BanUserAsync(userId, until);
+            return Ok(new
+            {
+                message = until == null
+                    ? "User permanently banned."
+                    : $"User banned until {until:yyyy-MM-dd HH:mm:ss} (UTC)."
+            });
+        }   
+
+        [Authorize(Roles = "admin")]
+        [HttpPut("unban/{userId}")]
+        public async Task<IActionResult> UnbanUser(string userId)
+        {
+            await _userService.UnbanUserAsync(userId);
+            return Ok(new { message = "User unbanned" });
+        }
     }
 }

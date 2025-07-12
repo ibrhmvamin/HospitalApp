@@ -17,5 +17,7 @@ namespace Business.Dtos.UserDtos
         public string Profile { get; set; }
         public DateTime BirthDate { get; set; }
         public IEnumerable<string> Statuses { get; set; }
+        public bool IsBanned { get; set; }
+        public DateTime? BannedUntil { get; set; }
     }
 }

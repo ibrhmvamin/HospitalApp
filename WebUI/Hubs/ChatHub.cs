@@ -1,65 +1,68 @@
-﻿using DataAccess.Data;
+﻿// WebUI/Hubs/ChatHub.cs
+using DataAccess.Data;
 using DataAccess.Entities;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
-using System.Reflection;
+using System.Security.Claims;
 
-namespace WebUI.Hubs
+namespace WebUI.Hubs;
+
+[Authorize]                             
+public class ChatHub : Hub
 {
-    public class ChatHub : Hub
+    private readonly UserManager<AppUser> _userManager;
+    private readonly DataContext _context;
+
+    public ChatHub(UserManager<AppUser> userManager, DataContext context)
     {
-        private readonly UserManager<AppUser> _userManager;
-        private readonly DataContext _context;
-
-        public ChatHub(UserManager<AppUser> userManager, DataContext context)
+        _userManager = userManager;
+        _context = context;
+    }
+    public override async Task OnConnectedAsync()
+    {
+        var userId = Context.User?.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (userId != null)
         {
-            _userManager = userManager;
-            _context = context;
-        }
-
-        public override Task OnConnectedAsync()
-        {
-            if (Context.User.Identity.IsAuthenticated)
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user is not null)
             {
-                AppUser? appUser = _userManager.Users.SingleOrDefaultAsync(u => u.Email == Context.User.Identity.Name).Result;
-                if (appUser != null)
-                {
-                    appUser.ClientId = Context.ConnectionId;
-                    _userManager.UpdateAsync(appUser).Wait();
-                }
+                user.ClientId = Context.ConnectionId;
+                await _userManager.UpdateAsync(user);
             }
-            return base.OnConnectedAsync();
         }
-        public override Task OnDisconnectedAsync(Exception? exception)
+        await base.OnConnectedAsync();
+    }
+
+    public override async Task OnDisconnectedAsync(Exception? exception)
+    {
+        var userId = Context.User?.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (userId != null)
         {
-            if (Context.User.Identity.IsAuthenticated)
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user is not null)
             {
-                AppUser? user = _userManager.FindByNameAsync(Context.User.Identity.Name).Result;
-                if (user != null)
-                {
-                    user.ClientId = null;
-                    _userManager.UpdateAsync(user).Wait();
-                }
+                user.ClientId = null;
+                await _userManager.UpdateAsync(user);
             }
-            return base.OnDisconnectedAsync(exception);
         }
-        public async Task SendMessage(string senderId, string receiverId, string messageContent)
+        await base.OnDisconnectedAsync(exception);
+    }
+    public async Task SendMessage(string senderId, string receiverId, string messageContent)
+    {
+        var msg = new Message
         {
-            var message = new Message
-            {
-                Id = Guid.NewGuid(),
-                Content = messageContent,
-                CreatedAt = DateTime.UtcNow,
-                SenderId = senderId,
-                ReceiverId = receiverId
-            };
+            Id = Guid.NewGuid(),
+            Content = messageContent,
+            CreatedAt = DateTime.UtcNow,
+            SenderId = senderId,
+            ReceiverId = receiverId
+        };
 
-            _context.Messages.Add(message);
-            await _context.SaveChangesAsync();
-
-            await Clients.User(receiverId).SendAsync("ReceiveMessage", senderId, messageContent);
-        }
-
+        _context.Messages.Add(msg);
+        await _context.SaveChangesAsync();
+        await Clients.Users(new[] { senderId, receiverId })
+                     .SendAsync("ReceiveMessage", senderId, receiverId, messageContent);
     }
 }

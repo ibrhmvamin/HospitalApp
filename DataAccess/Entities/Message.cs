@@ -11,6 +11,7 @@ namespace DataAccess.Entities
         public string Content { get; set; }
         public string SenderId { get; set; }
         public string ReceiverId { get; set; }
+        public bool IsDeleted { get; set; }   
     }
 
 }

@@ -101,6 +101,16 @@ namespace Business.Concrete
 
             await _context.SaveChangesAsync();
         }
+        public async Task<IEnumerable<AppointmentReturnDto>> GetAllAppointmentsAsync()
+        {
+            var appointments = await _context.Appointments
+                .Include(a => a.Doctor)
+                .Include(a => a.Patient)
+                .OrderByDescending(a => a.StartTime)
+                .ToListAsync();
+
+            return _mapper.Map<IEnumerable<AppointmentReturnDto>>(appointments);
+        }
     }
 }
 

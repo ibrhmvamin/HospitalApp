@@ -67,5 +67,13 @@ namespace WebUI.Controllers
             IEnumerable<AppointmentReturnDto> appointments = await _appointmentService.GetAppointmentsAsync(appUser.Id);
             return Ok(appointments);
         }
+
+        [Authorize(Roles = "admin")]
+        [HttpGet("appointments")]
+        public async Task<IActionResult> GetAllAppointments()
+        {
+            var result = await _appointmentService.GetAllAppointmentsAsync();
+            return Ok(result);
+        }
     }
 }

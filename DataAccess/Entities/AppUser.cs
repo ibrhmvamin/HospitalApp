@@ -20,5 +20,8 @@ namespace DataAccess.Entities
         public List<Appointment> AppointmentAsPatient { get; set; }
         public List<Appointment> AppointmentAsDoctor { get; set; }
         public string? ClientId { get; set; }
+
+        public bool IsBanned { get; set; }               
+        public DateTime? BannedUntil { get; set; }
     }
 }

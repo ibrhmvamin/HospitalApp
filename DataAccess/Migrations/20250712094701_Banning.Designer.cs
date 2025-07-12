@@ -4,6 +4,7 @@ using DataAccess.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace DataAccess.Migrations
 {
     [DbContext(typeof(DataContext))]
-    partial class DataContextModelSnapshot : ModelSnapshot
+    [Migration("20250712094701_Banning")]
+    partial class Banning
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -171,15 +174,9 @@ namespace DataAccess.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit");
-
                     b.Property<string>("ReceiverId")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
-
-                    b.Property<Guid?>("RoomId")
-                        .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("SenderId")
                         .IsRequired()
@@ -193,8 +190,6 @@ namespace DataAccess.Migrations
                     b.HasIndex("AppUserId");
 
                     b.HasIndex("AppUserId1");
-
-                    b.HasIndex("RoomId");
 
                     b.ToTable("Messages");
                 });
@@ -425,10 +420,6 @@ namespace DataAccess.Migrations
                     b.HasOne("DataAccess.Entities.AppUser", null)
                         .WithMany("SentMessages")
                         .HasForeignKey("AppUserId1");
-
-                    b.HasOne("DataAccess.Entities.Room", null)
-                        .WithMany("Messages")
-                        .HasForeignKey("RoomId");
                 });
 
             modelBuilder.Entity("DataAccess.Entities.Review", b =>
@@ -529,11 +520,6 @@ namespace DataAccess.Migrations
                     b.Navigation("ReceivedMessages");
 
                     b.Navigation("SentMessages");
-                });
-
-            modelBuilder.Entity("DataAccess.Entities.Room", b =>
-                {
-                    b.Navigation("Messages");
                 });
 #pragma warning restore 612, 618
         }

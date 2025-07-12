@@ -12,5 +12,6 @@ namespace DataAccess.Entities
         public string ReceiverId { get; set; }
         public AppUser Sender { get; set; }
         public AppUser Receiver { get; set; }
+        public ICollection<Message> Messages { get; set; } = new List<Message>();
     }
 }

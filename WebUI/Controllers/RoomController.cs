@@ -32,42 +32,16 @@ namespace WebUI.Controllers
         [HttpPost("")]
         public async Task<IActionResult> SendMessage([FromBody] NewMessageDto newMessageDto)
         {
-            AppUser? sender = await _userManager.FindByIdAsync(newMessageDto.SenderId);
-            AppUser? receiver = await _userManager.FindByIdAsync(newMessageDto.ReceiverId);
-
-            if (sender == null || receiver == null)
-                return BadRequest("Invalid sender or receiver ID.");
-
-            bool senderIsMember = await _userManager.IsInRoleAsync(sender, "member");
-            bool receiverIsMember = await _userManager.IsInRoleAsync(receiver, "member");
-            bool senderIsDoctor = await _userManager.IsInRoleAsync(sender, "doctor");
-            bool receiverIsDoctor = await _userManager.IsInRoleAsync(receiver, "doctor");
-
-            if ((senderIsMember && receiverIsMember) || (senderIsDoctor && receiverIsDoctor))
-                return BadRequest("Invalid users for messaging.");
-
-            var newMessage = new Message
-            {
-                Id = Guid.NewGuid(),
-                SenderId = newMessageDto.SenderId,
-                ReceiverId = newMessageDto.ReceiverId,
-                Content = newMessageDto.Content,
-                CreatedAt = DateTime.UtcNow
-            };
-
-            if (_context == null)
-            {
-                throw new NullReferenceException("DataContext is not initialized.");
-            }
-
-
-            await _context.Messages.AddAsync(newMessage);
-            await _context.SaveChangesAsync();
+            var messageDto = await _roomService.SendMessageAsync(newMessageDto);
 
             await _hubContext.Clients.User(newMessageDto.ReceiverId)
                 .SendAsync("ReceiveMessage", newMessageDto.SenderId, newMessageDto.Content);
 
-            return Ok(new { Message = "Message sent successfully" });
+            return Ok(new
+            {
+                Message = "Message sent successfully",
+                Data = messageDto
+            });
         }
 
         [Authorize]
@@ -76,18 +50,34 @@ namespace WebUI.Controllers
         {
             try
             {
-                var currentUser = await _userManager.Users
-                    .SingleOrDefaultAsync(u => u.UserName == User.Identity.Name);
+                var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+                if (userId == null) return NotFound("User not found");
 
-                if (currentUser == null) return NotFound("User not found");
-
-                var messages = await _roomService.GetMessagesAsync(currentUser.Id);
+                var messages = await _roomService.GetMessagesAsync(userId);
                 return Ok(messages);
             }
             catch (Exception ex)
             {
                 return StatusCode(StatusCodes.Status500InternalServerError, $"An error occurred: {ex.Message}");
             }
+        }
+
+        [HttpDelete("message/{id:guid}")]
+        public async Task<IActionResult> DeleteMessage(Guid id)
+        {
+            var currentUserId =
+                User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value!;
+            await _roomService.DeleteMessageAsync(id, currentUserId);
+            return NoContent();
+        }
+
+        [HttpDelete("conversation/{otherUserId}")]
+        public async Task<IActionResult> DeleteConversation(string otherUserId)
+        {
+            var currentUserId =
+                User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value!;
+            await _roomService.DeleteConversationAsync(currentUserId, otherUserId, currentUserId);
+            return NoContent();
         }
     }
 }

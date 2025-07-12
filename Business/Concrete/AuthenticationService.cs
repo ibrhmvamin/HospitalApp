@@ -66,9 +66,19 @@ namespace Business.Concrete
 
             if (!user.EmailConfirmed) throw new CustomException(400, "Confirm your email");
 
+            var nowUtc = DateTime.UtcNow;
+            if (user.IsBanned || (user.BannedUntil.HasValue && user.BannedUntil > nowUtc))
+            {
+                string msg = user.BannedUntil.HasValue
+                    ? $"You are banned until {user.BannedUntil.Value:yyyy-MM-dd HH:mm:ss} (UTC)."
+                    : "You are permanently banned.";
+                throw new CustomException(403, msg);
+            }
+
             string token = _tokenService.GenerateJWTToken(user);
             return token;
         }
+
 
         public async Task ConfirmEmailAsync(ConfirmEmailDto confirmEmailDto)
         {

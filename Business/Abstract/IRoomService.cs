@@ -9,7 +9,9 @@ namespace Business.Abstract
 {
     public interface IRoomService
     {
-        Task SendMessageAsync(NewMessageDto newMessageDto);
+        Task<MessageReturnDto> SendMessageAsync(NewMessageDto newMessageDto);
         Task<IEnumerable<MessageReturnDto>> GetMessagesAsync(string userId);
+        Task DeleteMessageAsync(Guid messageId, string currentUserId);
+        Task DeleteConversationAsync(string userId1, string userId2, string currentUserId);
     }
 }

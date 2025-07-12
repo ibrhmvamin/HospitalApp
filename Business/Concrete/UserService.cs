@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using Business.Abstract;
+using Business.Dtos.AppointmentDto;
 using Business.Dtos.UserDtos;
 using Business.Exceptions;
 using DataAccess.Data;
@@ -61,7 +62,7 @@ namespace Business.Concrete
         public async Task<string> CreateDoctorAsync(DoctorCreateDto dto)
         {
             if (dto.Password != dto.PasswordConfirm) throw new CustomException(400, "Passwords do not match");
-            AppUser user = new() { Name = dto.Name, Email = dto.Email, Surname = dto.Surname, UserName = dto.Email };
+            AppUser user = new() { Name =  dto.Name, Email = dto.Email, Surname = dto.Surname, UserName = dto.Email };
             user.EmailConfirmed = true;
             IdentityResult result = await _userManager.CreateAsync(user, dto.Password);
             if (!result.Succeeded) throw new CustomException(400, result.Errors.First().Code.ToString());
@@ -224,5 +225,40 @@ namespace Business.Concrete
                 throw new CustomException(400, result.Errors.First().Description);
         }
 
+        public async Task BanUserAsync(string userId, DateTime? until = null)
+        {
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null)
+            {
+                throw new CustomException(404, "User not found");
+            }
+
+            user.IsBanned = true;
+            user.BannedUntil = until;
+
+            var result = await _userManager.UpdateAsync(user);
+            if (!result.Succeeded)
+            {
+                throw new CustomException(500, "Failed to ban user");
+            }
+        }
+
+        public async Task UnbanUserAsync(string userId)
+        {
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null)
+            {
+                throw new CustomException(404, "User not found");
+            }
+
+            user.IsBanned = false;
+            user.BannedUntil = null;
+
+            var result = await _userManager.UpdateAsync(user);
+            if (!result.Succeeded)
+            {
+                throw new CustomException(500, "Failed to unban user");
+            }
+        }
     }
 }
