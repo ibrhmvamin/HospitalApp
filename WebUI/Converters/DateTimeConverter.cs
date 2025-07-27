@@ -6,8 +6,7 @@ namespace WebUI.Converters
 {
     public class DateTimeConverter : JsonConverter<DateTime>
     {
-        // Updated format to include hours and minutes (24-hour format)
-        private readonly string _format = "dd-MM-yyyy HH:mm"; // The date format with hour and minute
+        private readonly string _format = "dd-MM-yyyy HH:mm";
 
         public override DateTime Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         {

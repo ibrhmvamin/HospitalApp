@@ -18,8 +18,6 @@ namespace Business.Dtos.UserDtos
         [MaxLength(20)]
         public string Surname { get; set; }
 
-        //[MaxLength(200)]
-        //public string Description { get; set; }
 
         [Required]
         [EmailAddress]
@@ -30,14 +28,9 @@ namespace Business.Dtos.UserDtos
         [Required]
         public DateTime BirthDate { get; set; }
 
-        //[Required]
-        //[Range(50, 200, ErrorMessage = "Price must be between 50 and 200.")]
-        //public decimal Price { get; set; }
+        [StringLength(25, MinimumLength = 6, ErrorMessage = "Password must be between 6 and 25 characters.")]
+        public string? NewPassword { get; set; }
 
-        //[StringLength(25, MinimumLength = 6, ErrorMessage = "Password must be between 6 and 25 characters.")]
-        //public string Password { get; set; }
-
-        //[Compare("Password", ErrorMessage = "Passwords do not match.")]
-        //public string PasswordConfirm { get; set; }
+        public string? ConfirmPassword { get; set; }
     }
 }

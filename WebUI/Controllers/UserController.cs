@@ -143,18 +143,15 @@ namespace WebUI.Controllers
         [HttpPut("doctors/{id}")]
         public async Task<IActionResult> UpdateDoctor(string id, [FromForm] UserUpdateDto dto)
         {
-            // Retrieve the doctor entity from the database
             var doctor = await _userManager.Users.SingleOrDefaultAsync(u => u.Id == id);
             if (doctor == null)
                 return NotFound(new { message = "Doctor not found" });
 
-            // Update the doctor's properties
             doctor.Name = dto.Name;
             doctor.Surname = dto.Surname;
             doctor.Email = dto.Email;
             doctor.BirthDate = dto.BirthDate;
 
-            // Handle profile image if uploaded
             if (dto.Profile != null)
             {
                 if (!dto.Profile.IsImage())
@@ -162,32 +159,39 @@ namespace WebUI.Controllers
                 if (dto.Profile.DoesSizeExceed(100 * 1024))
                     throw new CustomException(400, "File size exceeds the limit");
 
-                // Save the profile image and set the filename to the doctor's profile
                 string filename = await dto.Profile.SaveFileAsync();
-                doctor.Profile = filename; // Update the profile image for the existing doctor entity
+                doctor.Profile = filename; 
             }
 
-            // Update the doctor entity in the database
+            if (!string.IsNullOrWhiteSpace(dto.NewPassword))
+            {
+                if (dto.NewPassword != dto.ConfirmPassword)
+                    return BadRequest(new { message = "Passwords do not match" });
+
+                var resetToken = await _userManager.GeneratePasswordResetTokenAsync(doctor);
+                var pwResult = await _userManager.ResetPasswordAsync(doctor, resetToken, dto.NewPassword);
+
+                if (!pwResult.Succeeded)
+                    return BadRequest(new { message = "Password update failed", errors = pwResult.Errors });
+            }
+
             var result = await _userManager.UpdateAsync(doctor);
 
             if (!result.Succeeded)
                 return BadRequest(new { message = "Failed to update doctor", errors = result.Errors });
 
-            // Return success response
             return Ok(new { message = "Doctor updated successfully" });
         }
 
         [HttpPut("patients/{id}")]
-        [Authorize(Roles = "admin")] // Ensure only admins can update user data
+        [Authorize(Roles = "admin")]
         public async Task<IActionResult> UpdateUser(string id, [FromForm] UserUpdateDto userDto)
         {
-            // Validate the input data
             if (userDto == null)
                 return BadRequest(new { message = "Invalid user data" });
 
-            // Use the service layer to update the user
             try
-            {
+            { 
                 await _userService.UpdateUserAsync(id, userDto);
                 return Ok(new { message = "User updated successfully" });
             }

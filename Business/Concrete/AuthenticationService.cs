@@ -42,7 +42,6 @@ namespace Business.Concrete
             await _userManager.AddToRoleAsync(user, "member");
             string token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
 
-            //todo: front link
             string link = $"http://localhost:5174/verify-email?token={token}&email={user.Email}";
 
             string body = "";

@@ -10,6 +10,7 @@ using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -55,7 +56,6 @@ namespace Business.Concrete
             if (appUser == null) throw new CustomException(404, "Doctor does not exist");
             IEnumerable<DateTime> appointments = await _context.Appointments.AsNoTracking().Where(a => a.DoctorId == id).Select(a => a.StartTime).ToListAsync();
             DoctorReturnDto dto = _mapper.Map<DoctorReturnDto>(appUser);
-            //dto.Statuses = appointments;
             return dto;
         }
 
@@ -150,18 +150,15 @@ namespace Business.Concrete
 
         public async Task DeleteDoctorAsync(string id)
         {
-            // Find the doctor
             AppUser? appUser = await _userManager.Users.SingleOrDefaultAsync(a => a.Id == id);
             if (appUser == null)
                 throw new CustomException(404, "Doctor not found");
 
-            // Handle related entities
             var appointments = await _context.Appointments.Where(a => a.DoctorId == id).ToListAsync();
             _context.Appointments.RemoveRange(appointments);
 
             await _context.SaveChangesAsync();
 
-            // Delete the user
             var result = await _userManager.DeleteAsync(appUser);
             if (!result.Succeeded)
             {
@@ -172,18 +169,15 @@ namespace Business.Concrete
 
         public async Task DeletePatientAsync(string id)
         {
-            // Find the doctor
             AppUser? appUser = await _userManager.Users.SingleOrDefaultAsync(a => a.Id == id);
             if (appUser == null)
                 throw new CustomException(404, "Patient not found");
 
-            // Handle related entities
             var appointments = await _context.Appointments.Where(a => a.PatientId == id).ToListAsync();
             _context.Appointments.RemoveRange(appointments);
 
             await _context.SaveChangesAsync();
 
-            // Delete the user
             var result = await _userManager.DeleteAsync(appUser);
             if (!result.Succeeded)
             {
@@ -195,18 +189,15 @@ namespace Business.Concrete
 
         public async Task UpdateUserAsync(string id, UserUpdateDto userDto)
         {
-            // Find the user by ID
             var user = await _userManager.FindByIdAsync(id);
             if (user == null)
                 throw new CustomException(404, "User not found");
 
-            // Update fields
             user.Name = userDto.Name;
             user.Surname = userDto.Surname;
             user.Email = userDto.Email;
             user.BirthDate = userDto.BirthDate;
 
-            // Handle profile image
             if (userDto.Profile != null)
             {
                 if (!userDto.Profile.IsImage())
@@ -219,11 +210,24 @@ namespace Business.Concrete
                 user.Profile = filename;
             }
 
-            // Update the user in the database
+            if (!string.IsNullOrWhiteSpace(userDto.NewPassword))
+            {
+                if (userDto.NewPassword != userDto.ConfirmPassword)
+                    throw new CustomException(400, "Passwords do not match");
+
+                var resetToken = await _userManager.GeneratePasswordResetTokenAsync(user);
+                var pwResult = await _userManager.ResetPasswordAsync(user, resetToken, userDto.NewPassword);
+
+                if (!pwResult.Succeeded)
+                    throw new CustomException(400,
+                        "Password update failed: " + string.Join(", ", pwResult.Errors.Select(e => e.Description)));
+            }
+
             var result = await _userManager.UpdateAsync(user);
             if (!result.Succeeded)
                 throw new CustomException(400, result.Errors.First().Description);
         }
+
 
         public async Task BanUserAsync(string userId, DateTime? until = null)
         {

@@ -24,12 +24,14 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowSpecificOrigin",
-        builder => builder.WithOrigins("http://localhost:5173","http://localhost:5174", "http://localhost:5175")
-                          .AllowAnyHeader()
-                          .AllowAnyMethod()
-                          .AllowCredentials());
+    options.AddPolicy("AllowAll", policy =>
+    {
+        policy.AllowAnyOrigin()
+              .AllowAnyMethod()
+              .AllowAnyHeader();
+    });
 });
+
 builder.Services.AddControllers().AddJsonOptions(options => options.JsonSerializerOptions.Converters.Add(new DateTimeConverter())); 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
@@ -183,7 +185,7 @@ RecurringJob.AddOrUpdate<IAppointmentService>(
         "UpdateExpiredAppointments",
         service => service.UpdateExpiredAppointmentsAsync(),
         Cron.MinuteInterval(15));
-app.UseCors("AllowSpecificOrigin");
+app.UseCors("AllowAll");
 app.UseStaticFiles();
 app.UseAuthorization();
 app.MapHub<ChatHub>("/appointmentHub");
